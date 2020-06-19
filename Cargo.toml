@@ -7,3 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+thrussh="0.28.0"
+sqlx = { version = "0.3", default-features = false, features = [ "runtime-tokio", "macros" ] }
+tokio = { version = "0.2", features = ["full"] }
+futures = "0.3.5"
+thrussh-keys = "0.17.3"
+anyhow = "1.0.31"
