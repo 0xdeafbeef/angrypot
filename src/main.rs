@@ -1,11 +1,12 @@
+mod data_collector;
 mod server;
 
-use fern::colors::{Color, ColoredLevelConfig};
-use log::{debug, error, info, trace};
-
 use crate::server::*;
+use data_collector::Collector;
+use fern::colors::{Color, ColoredLevelConfig};
+use log::trace;
 use std::collections::HashMap;
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 fn set_up_logging(level: u64) {
     // configure colors for the whole line
@@ -59,19 +60,23 @@ fn set_up_logging(level: u64) {
 }
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> anyhow::Result<()> {
     set_up_logging(20);
     let mut config = thrussh::server::Config::default();
     config.connection_timeout = Some(std::time::Duration::from_secs(30));
     config.auth_rejection_time = std::time::Duration::from_secs(30);
-    config
-        .keys
-        .push(thrussh_keys::key::KeyPair::generate_ed25519().unwrap());
-    let config = Arc::new(config);
-    let sh = Server {
-        clients: Arc::new(Mutex::new(HashMap::new())),
-        id: 0,
-    };
-    dbg!("running");
-    thrussh::server::run(config, "0.0.0.0:2222", sh).await
+    // config
+    //     .keys
+    //     .push(thrussh_keys::key::KeyPair::generate_ed25519().unwrap());
+    // let config = Arc::new(config);
+    // let sh = Server {
+    //     clients: Arc::new(Mutex::new(HashMap::new())),
+    //     id: 0,
+    //     collector_data: Collector::new().await?,
+    // };
+    // dbg!("running");
+    // thrussh::server::run(config, "0.0.0.0:2222", sh).await?;
+    let col = Collector::new().await?;
+    col.log_password("k", "kek").await?;
+    Ok(())
 }
