@@ -6,9 +6,9 @@ use data_collector::{Collector, DbLogTypes};
 use fern::colors::{Color, ColoredLevelConfig};
 use log::trace;
 use std::collections::HashMap;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+use futures::try_join;
 fn set_up_logging(level: u64) {
     // configure colors for the whole line
     let colors_line = ColoredLevelConfig::new()
@@ -77,8 +77,9 @@ async fn main() -> anyhow::Result<()> {
         id: 0,
         tx,
     };
-    tokio::task::spawn_blocking( move || col.run());
+    let listener = col.run();
+    let server_run = thrussh::server::run(config, "0.0.0.0:2222", sh);
+    try_join!(server_run, listener).unwrap();
     dbg!("running");
-    thrussh::server::run(config, "0.0.0.0:2222", sh).await?;
     Ok(())
 }

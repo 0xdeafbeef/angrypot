@@ -1,13 +1,13 @@
 use crate::data_collector::DbLogTypes;
+use futures::executor::block_on;
 use log::{error, info};
 use std::collections::HashMap;
-use tokio::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use thrussh::server::Response;
 use thrussh::server::{Auth, Session};
 use thrussh::*;
 use thrussh_keys::key::PublicKey;
-use futures::executor::block_on;
+use tokio::sync::mpsc::Sender;
 #[derive(Clone)]
 pub struct Server {
     pub tx: Sender<DbLogTypes>,
@@ -49,7 +49,7 @@ impl server::Handler for Server {
     }
     fn auth_password(mut self, user: &str, password: &str) -> Self::FutureAuth {
         info!("auth password {}:{}", &user, &password);
-        
+
         if let Err(e) = block_on(self.tx.send(DbLogTypes::Password(password.to_string()))) {
             error!("Error sending password to db: {}", e)
         };

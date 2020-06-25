@@ -1,15 +1,14 @@
-use anyhow::Result;
-use sqlx::query;
-use sqlx::{ SqlitePool};
-use tokio::sync::mpsc::{ Receiver};
-use std::time::Duration;
+use anyhow::{Result, Error};
 use log::{error, info};
-use std::sync::Arc;
+use sqlx::query;
+use sqlx::SqlitePool;
+use std::time::Duration;
+use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 pub struct Collector {
     pool: SqlitePool,
-    receiver:Receiver<DbLogTypes>,
+    receiver: Receiver<DbLogTypes>,
 }
 pub enum DbLogTypes {
     Password(String),
@@ -32,20 +31,23 @@ impl Collector {
         .await?;
         Ok(Self { pool, receiver: rx })
     }
-    pub async fn run(&mut self)  {
-            for data in self.receiver.recv().await {
-                match data {
-                    DbLogTypes::EndOfCommunication => break,
-                    DbLogTypes::Login(a) =>
-                        if let Err(e) =&self.save_login(&a).await{
-                            error!("Error saving login in db: {}",e);
-                        },
-                    DbLogTypes::Password(a) =>
-                        if let Err(e) = &self.save_password(&a).await{
-                            error!("Error saving password in db: {}",e)
-                        }
-                };
+    pub async fn run(&mut self) ->Result<(), std::io::Error> {
+        for data in self.receiver.recv().await {
+            match data {
+                DbLogTypes::EndOfCommunication => break,
+                DbLogTypes::Login(a) => {
+                    if let Err(e) = &self.save_login(&a).await {
+                        error!("Error saving login in db: {}", e);
+                    }
+                }
+                DbLogTypes::Password(a) => {
+                    if let Err(e) = &self.save_password(&a).await {
+                        error!("Error saving password in db: {}", e)
+                    }
+                }
             };
+        }
+        Ok(())
     }
     async fn save_login(&self, login: &str) -> Result<()> {
         let login_previous_count: i32 =
