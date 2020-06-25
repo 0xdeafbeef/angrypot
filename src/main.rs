@@ -2,10 +2,11 @@ mod data_collector;
 mod server;
 
 use crate::server::*;
-use data_collector::Collector;
+use data_collector::{Collector, DbLogTypes};
 use fern::colors::{Color, ColoredLevelConfig};
 use log::trace;
 use std::collections::HashMap;
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
 fn set_up_logging(level: u64) {
@@ -61,22 +62,23 @@ fn set_up_logging(level: u64) {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    set_up_logging(20);
+    set_up_logging(3);
     let mut config = thrussh::server::Config::default();
     config.connection_timeout = Some(std::time::Duration::from_secs(30));
     config.auth_rejection_time = std::time::Duration::from_secs(30);
-    // config
-    //     .keys
-    //     .push(thrussh_keys::key::KeyPair::generate_ed25519().unwrap());
-    // let config = Arc::new(config);
-    // let sh = Server {
-    //     clients: Arc::new(Mutex::new(HashMap::new())),
-    //     id: 0,
-    //     collector_data: Collector::new().await?,
-    // };
-    // dbg!("running");
-    // thrussh::server::run(config, "0.0.0.0:2222", sh).await?;
-    let col = Collector::new().await?;
-    col.log_password("k", "kek").await?;
+    config
+        .keys
+        .push(thrussh_keys::key::KeyPair::generate_ed25519().unwrap());
+    let config = Arc::new(config);
+    let (tx, rx): (Sender<DbLogTypes>, Receiver<DbLogTypes>) = channel(100);
+    let mut col = Collector::new(rx).await?;
+    let sh = Server {
+        clients: Arc::new(Mutex::new(HashMap::new())),
+        id: 0,
+        tx,
+    };
+    tokio::task::spawn_blocking( move || col.run());
+    dbg!("running");
+    thrussh::server::run(config, "0.0.0.0:2222", sh).await?;
     Ok(())
 }

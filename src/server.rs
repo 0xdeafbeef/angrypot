@@ -1,15 +1,16 @@
-use crate::Collector;
-use log::{debug, error, info, trace};
+use crate::data_collector::DbLogTypes;
+use log::{error, info};
 use std::collections::HashMap;
+use tokio::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use thrussh::server::Response;
 use thrussh::server::{Auth, Session};
 use thrussh::*;
 use thrussh_keys::key::PublicKey;
-
+use futures::executor::block_on;
 #[derive(Clone)]
 pub struct Server {
-    pub collector_data: Collector,
+    pub tx: Sender<DbLogTypes>,
     pub clients: Arc<Mutex<HashMap<(usize, ChannelId), thrussh::server::Handle>>>,
     pub id: usize,
 }
@@ -46,8 +47,15 @@ impl server::Handler for Server {
         info!("auth_none {}", &user);
         futures::future::ready(Ok((self, server::Auth::Reject)))
     }
-    fn auth_password(self, user: &str, password: &str) -> Self::FutureAuth {
+    fn auth_password(mut self, user: &str, password: &str) -> Self::FutureAuth {
         info!("auth password {}:{}", &user, &password);
+        
+        if let Err(e) = block_on(self.tx.send(DbLogTypes::Password(password.to_string()))) {
+            error!("Error sending password to db: {}", e)
+        };
+        if let Err(e) = block_on(self.tx.send(DbLogTypes::Login(user.to_string()))) {
+            error!("Error sending login to db: {}", e)
+        }
         futures::future::ready(Ok((self, server::Auth::Reject)))
     }
     fn auth_publickey(self, user: &str, _publickey: &PublicKey) -> Self::FutureAuth {
