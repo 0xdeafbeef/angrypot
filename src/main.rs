@@ -65,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
     set_up_logging(3);
     let mut config = thrussh::server::Config::default();
     config.connection_timeout = Some(std::time::Duration::from_secs(30));
-    config.auth_rejection_time = std::time::Duration::from_secs(30);
+    config.auth_rejection_time = std::time::Duration::from_secs(1);
     config
         .keys
         .push(thrussh_keys::key::KeyPair::generate_ed25519().unwrap());
