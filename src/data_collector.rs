@@ -35,7 +35,6 @@ impl Collector {
     pub async fn run(&mut self) -> Result<(), std::io::Error> {
         while let Some(data) = self.receiver.next().await {
             match data {
-                DbLogTypes::EndOfCommunication => break,
                 DbLogTypes::Login(a) => {
                     if let Err(e) = &self.save_login(&a).await {
                         error!("Error saving login in db: {}", e);
@@ -45,7 +44,8 @@ impl Collector {
                     if let Err(e) = &self.save_password(&a).await {
                         error!("Error saving password in db: {}", e)
                     }
-                }
+                },
+                DbLogTypes::IpAddress(a)=>unimplemented!("Todo")
             };
         }
         info!("Going out of collector run :(");
