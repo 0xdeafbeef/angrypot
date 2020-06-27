@@ -1,4 +1,5 @@
-use anyhow::{Result, Error};
+use anyhow::Result;
+use futures::{StreamExt, TryStreamExt};
 use log::{error, info};
 use sqlx::query;
 use sqlx::SqlitePool;
@@ -13,7 +14,7 @@ pub struct Collector {
 pub enum DbLogTypes {
     Password(String),
     Login(String),
-    EndOfCommunication,
+    IpAddress(String)
 }
 impl Collector {
     pub async fn new(rx: Receiver<DbLogTypes>) -> Result<Self> {
@@ -23,16 +24,16 @@ impl Collector {
             .min_size(1)
             .build("sqlite://./passwords.db")
             .await?;
-        query!("create table if not exists passwords(id integer primary key , password TEXT, count integer)").execute(&pool).await?;
-        query!(
-            "create table if not exists logins(id integer primary key , login TEXT, count integer)"
-        )
-        .execute(&pool)
-        .await?;
+        query!("create table if not exists passwords(password TEXT, count integer)")
+            .execute(&pool)
+            .await?;
+        query!("create table if not exists logins(login TEXT, count integer)")
+            .execute(&pool)
+            .await?;
         Ok(Self { pool, receiver: rx })
     }
-    pub async fn run(&mut self) ->Result<(), std::io::Error> {
-        for data in self.receiver.recv().await {
+    pub async fn run(&mut self) -> Result<(), std::io::Error> {
+        while let Some(data) = self.receiver.next().await {
             match data {
                 DbLogTypes::EndOfCommunication => break,
                 DbLogTypes::Login(a) => {
@@ -47,6 +48,7 @@ impl Collector {
                 }
             };
         }
+        info!("Going out of collector run :(");
         Ok(())
     }
     async fn save_login(&self, login: &str) -> Result<()> {
@@ -59,10 +61,11 @@ impl Collector {
                     Some(a) => a,
                     None => 0,
                 },
-                Err(e) => 0,
+                Err(_e) => 0,
             };
+        info!("Saving login to db");
         query!(
-            "insert or replace into logins VALUES (0, $1, $2)",
+            "insert or replace into logins VALUES ( ?, ?)",
             &login,
             login_previous_count + 1
         )
@@ -80,11 +83,11 @@ impl Collector {
                     Some(a) => a,
                     None => 0,
                 },
-                Err(e) => 0,
+                Err(_e) => 0,
             };
-
+        info!("Saving password to db");
         query!(
-            "insert or replace into passwords VALUES (0, $1, $2)",
+            "insert or replace into passwords VALUES ( ?, ?)",
             &pasword,
             password_previous_count + 1
         )

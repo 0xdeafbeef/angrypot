@@ -3,12 +3,18 @@ mod server;
 
 use crate::server::*;
 use data_collector::{Collector, DbLogTypes};
+use dotenv::var;
 use fern::colors::{Color, ColoredLevelConfig};
+use futures::try_join;
 use log::trace;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use thrussh_keys::load_secret_key;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use futures::try_join;
+
 fn set_up_logging(level: u64) {
     // configure colors for the whole line
     let colors_line = ColoredLevelConfig::new()
@@ -62,13 +68,14 @@ fn set_up_logging(level: u64) {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    set_up_logging(3);
+    set_up_logging(2);
+    let key_pair_path = PathBuf::from(var("SERVER_KEY_PAIR_PATH")?);
+    let key = load_secret_key(key_pair_path, None)?;
     let mut config = thrussh::server::Config::default();
     config.connection_timeout = Some(std::time::Duration::from_secs(30));
     config.auth_rejection_time = std::time::Duration::from_secs(1);
-    config
-        .keys
-        .push(thrussh_keys::key::KeyPair::generate_ed25519().unwrap());
+
+    config.keys.push(key);
     let config = Arc::new(config);
     let (tx, rx): (Sender<DbLogTypes>, Receiver<DbLogTypes>) = channel(100);
     let mut col = Collector::new(rx).await?;
