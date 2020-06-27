@@ -1,5 +1,5 @@
 use anyhow::Result;
-use futures::{StreamExt, TryStreamExt};
+use futures::{StreamExt};
 use log::{error, info};
 use sqlx::query;
 use sqlx::SqlitePool;
@@ -45,7 +45,7 @@ impl Collector {
                         error!("Error saving password in db: {}", e)
                     }
                 },
-                DbLogTypes::IpAddress(a)=>unimplemented!("Todo")
+                DbLogTypes::IpAddress(_a)=>unimplemented!("Todo")
             };
         }
         info!("Going out of collector run :(");

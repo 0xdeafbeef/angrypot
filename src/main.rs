@@ -8,9 +8,9 @@ use fern::colors::{Color, ColoredLevelConfig};
 use futures::try_join;
 use log::trace;
 use std::collections::HashMap;
-use std::fs::File;
+
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::sync::{Arc, Mutex};
 use thrussh_keys::load_secret_key;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
