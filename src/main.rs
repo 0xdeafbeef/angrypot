@@ -8,14 +8,13 @@ use fern::colors::{Color, ColoredLevelConfig};
 use futures::try_join;
 use log::trace;
 use std::collections::HashMap;
-
-use std::io::Read;
-use std::path::{PathBuf};
+use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use thrussh_keys::load_secret_key;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-fn set_up_logging(level: u64) {
+fn set_up_logging(level: u32) {
     // configure colors for the whole line
     let colors_line = ColoredLevelConfig::new()
         .error(Color::Red)
@@ -68,17 +67,27 @@ fn set_up_logging(level: u64) {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    set_up_logging(2);
-    let key_pair_path = PathBuf::from(var("SERVER_KEY_PAIR_PATH")?);
-    let key = load_secret_key(key_pair_path, None)?;
+    let verb_level: u32 = var("VERBOSITY_LEVEL")
+        .unwrap_or_else(|_| "0".to_string())
+        .parse()?;
+    set_up_logging(verb_level);
+    let key_path = PathBuf::from(var("SERVER_KEY_PAIR_PATH")?);
+    let connection_timeout: u64 = var("CONNECTION_TIMEOUT")
+        .unwrap_or_else(|_| "600".to_string())
+        .parse()?;
+    let influx_ip: SocketAddr = var("INFLUXDB_SERVER_IP")?.parse()?;
+    let auth_reject_time: u64 = var("AUTH_REJECT_TIME")
+        .unwrap_or_else(|_| "1".to_string())
+        .parse()?;
+    let key = load_secret_key(key_path, None)?;
     let mut config = thrussh::server::Config::default();
-    config.connection_timeout = Some(std::time::Duration::from_secs(30));
-    config.auth_rejection_time = std::time::Duration::from_secs(1);
+    config.connection_timeout = Some(std::time::Duration::from_secs(connection_timeout));
+    config.auth_rejection_time = std::time::Duration::from_secs(auth_reject_time);
 
     config.keys.push(key);
     let config = Arc::new(config);
     let (tx, rx): (Sender<DbLogTypes>, Receiver<DbLogTypes>) = channel(100);
-    let mut col = Collector::new(rx).await?;
+    let mut col = Collector::new(rx, influx_ip).await?;
     let sh = Server {
         clients: Arc::new(Mutex::new(HashMap::new())),
         id: 0,

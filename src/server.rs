@@ -18,7 +18,17 @@ pub struct Server {
 
 impl server::Server for Server {
     type Handler = Self;
-    fn new(&mut self, _: Option<std::net::SocketAddr>) -> Self {
+    fn new(&mut self, client_addr: Option<std::net::SocketAddr>) -> Self {
+        match client_addr {
+            Some(a) => {
+                if let Err(e) = block_on(self.tx.send(DbLogTypes::IpAddress(a.ip().to_string()))) {
+                    error!("Error while sending ip to db: {}", e);
+                };
+                info!("Recieved connection from {}", &a.ip().to_string());
+            }
+            None => error!("Ip address is not provided"),
+        }
+
         let s = self.clone();
         self.id += 1;
         s
