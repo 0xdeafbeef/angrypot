@@ -28,12 +28,6 @@ impl Collector {
             .min_size(1)
             .build("sqlite://./passwords.db")
             .await?;
-        // query!("create table if not exists passwords(password TEXT, count integer)")
-        //     .execute(&pool)
-        //     .await?;
-        // query!("create table if not exists logins(login TEXT, count integer)")
-        //     .execute(&pool)
-        //     .await?;
 
         Ok(Self {
             pool,
@@ -48,6 +42,7 @@ impl Collector {
             let cycle_start_time = tokio::time::Instant::now();
             if cycle_start_time - function_strart_time > tokio::time::Duration::from_secs(60) {
                 function_strart_time = cycle_start_time;
+                info!("Ip stats queue not empty. Flushing.");
                 if !&self.ip_storage.is_empty() {
                     if let Err(e) = self.send_metrics() {
                         error!("Error sending metrics to influxdb: {}", e);
