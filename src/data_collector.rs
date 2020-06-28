@@ -28,12 +28,12 @@ impl Collector {
             .min_size(1)
             .build("sqlite://./passwords.db")
             .await?;
-        query!("create table if not exists passwords(password TEXT, count integer)")
-            .execute(&pool)
-            .await?;
-        query!("create table if not exists logins(login TEXT, count integer)")
-            .execute(&pool)
-            .await?;
+        // query!("create table if not exists passwords(password TEXT, count integer)")
+        //     .execute(&pool)
+        //     .await?;
+        // query!("create table if not exists logins(login TEXT, count integer)")
+        //     .execute(&pool)
+        //     .await?;
 
         Ok(Self {
             pool,

@@ -18,6 +18,10 @@ log = "0.4.8"
 fern = { version = "0.5", features = ["colored"] }
 chrono = "0.4.11"
 influx_db_client = "^0.4.0"
+[build-dependencies]
+sqlx = { version = "0.3", default-features = false, features = [ "runtime-tokio", "macros", "sqlite" ] }
+tokio = { version = "0.2", features = ["full"] }
+
 [profile.release]
 lto=true
 codegen-units=1
