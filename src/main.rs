@@ -76,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "600".to_string())
         .parse()?;
     let influx_ip: SocketAddr = var("INFLUXDB_SERVER_IP")?.parse()?;
+    let geo_ip_path = PathBuf::from(var("GEOIP_DB")?);
     let auth_reject_time: u64 = var("AUTH_REJECT_TIME")
         .unwrap_or_else(|_| "1".to_string())
         .parse()?;
@@ -87,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
     config.keys.push(key);
     let config = Arc::new(config);
     let (tx, rx): (Sender<DbLogTypes>, Receiver<DbLogTypes>) = channel(100);
-    let mut col = Collector::new(rx, influx_ip).await?;
+    let mut col = Collector::new(rx, influx_ip, geo_ip_path).await?;
     let sh = Server {
         clients: Arc::new(Mutex::new(HashMap::new())),
         id: 0,

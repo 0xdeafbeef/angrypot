@@ -18,7 +18,7 @@ log = "0.4.8"
 fern = { version = "0.5", features = ["colored"] }
 chrono = "0.4.11"
 influx_db_client = "^0.4.0"
-
+maxminddb = "0.14.0"
 [profile.release]
 lto=true
 codegen-units=1

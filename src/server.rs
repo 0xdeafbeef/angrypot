@@ -24,7 +24,7 @@ impl server::Server for Server {
                 if let Err(e) = block_on(self.tx.send(DbLogTypes::IpAddress(a.ip().to_string()))) {
                     error!("Error while sending ip to db: {}", e);
                 };
-                info!("Recieved connection from {}", &a.ip().to_string());
+                info!("Received connection from {}", &a.ip().to_string());
             }
             None => error!("Ip address is not provided"),
         }
@@ -60,7 +60,6 @@ impl server::Handler for Server {
     }
     fn auth_password(mut self, user: &str, password: &str) -> Self::FutureAuth {
         info!("auth password {}:{}", &user, &password);
-
         if let Err(e) = block_on(self.tx.send(DbLogTypes::Password(password.to_string()))) {
             error!("Error sending password to db: {}", e)
         };
